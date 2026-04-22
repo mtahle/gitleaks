@@ -102,6 +102,18 @@ func (s *scanState) broadcastDone() {
 // Serve starts the UI HTTP server, optionally opens the browser, and blocks
 // until the server stops.
 func Serve(host string, port int, openBrowser bool) error {
+	addr := fmt.Sprintf("%s:%d", host, port)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("listening on %s: %w", addr, err)
+	}
+
+	return ServeListener(ln, openBrowser)
+}
+
+// ServeListener starts the UI HTTP server on an existing listener and blocks
+// until the server stops.
+func ServeListener(ln net.Listener, openBrowser bool) error {
 	state := newScanState()
 
 	binaryPath, err := os.Executable()
@@ -134,13 +146,7 @@ func Serve(host string, port int, openBrowser bool) error {
 		apiFindings(w, r, state)
 	})
 
-	addr := fmt.Sprintf("%s:%d", host, port)
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return fmt.Errorf("listening on %s: %w", addr, err)
-	}
-
-	url := fmt.Sprintf("http://%s", addr)
+	url := fmt.Sprintf("http://%s", ln.Addr().String())
 	logging.Info().Msgf("Gitleaks UI → %s  (press Ctrl-C to stop)", url)
 
 	if openBrowser {

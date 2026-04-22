@@ -1,4 +1,4 @@
-.PHONY: test test-cover failfast profile clean format build
+.PHONY: test test-cover failfast profile clean format build build-desktop
 
 PKG=github.com/zricethezav/gitleaks
 VERSION := `git fetch --tags && git tag | sort -V | tail -1`
@@ -21,6 +21,10 @@ failfast: format
 build: config/gitleaks.toml format
 	go mod tidy
 	go build $(LDFLAGS)
+
+build-desktop: config/gitleaks.toml format
+	go mod tidy
+	go build -tags desktop -o gitleaks-desktop ./cmd/gitleaks-desktop
 
 lint:
 	golangci-lint run
