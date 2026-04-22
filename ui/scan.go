@@ -32,19 +32,19 @@ type ScanOptions struct {
 	FollowSymlinks bool `json:"followSymlinks"`
 
 	// ── global flags ──
-	Config             string   `json:"config"`
-	ExitCode           int      `json:"exitCode"`
-	BaselinePath       string   `json:"baselinePath"`
-	LogLevel           string   `json:"logLevel"`
-	Verbose            bool     `json:"verbose"`
-	MaxTargetMegabytes int      `json:"maxTargetMegabytes"`
-	IgnoreGitleaksAllow bool    `json:"ignoreGitleaksAllow"`
-	Redact             int      `json:"redact"`
-	EnableRules        []string `json:"enableRules"`
-	GitleaksIgnorePath string   `json:"gitleaksIgnorePath"`
-	MaxDecodeDepth     int      `json:"maxDecodeDepth"`
-	MaxArchiveDepth    int      `json:"maxArchiveDepth"`
-	Timeout            int      `json:"timeout"`
+	Config              string   `json:"config"`
+	ExitCode            int      `json:"exitCode"`
+	BaselinePath        string   `json:"baselinePath"`
+	LogLevel            string   `json:"logLevel"`
+	Verbose             bool     `json:"verbose"`
+	MaxTargetMegabytes  int      `json:"maxTargetMegabytes"`
+	IgnoreGitleaksAllow bool     `json:"ignoreGitleaksAllow"`
+	Redact              int      `json:"redact"`
+	EnableRules         []string `json:"enableRules"`
+	GitleaksIgnorePath  string   `json:"gitleaksIgnorePath"`
+	MaxDecodeDepth      int      `json:"maxDecodeDepth"`
+	MaxArchiveDepth     int      `json:"maxArchiveDepth"`
+	Timeout             int      `json:"timeout"`
 
 	// ── report flags ──
 	ReportFormat   string `json:"reportFormat"`
