@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gitleaks UI</title>
+<style>
+/* ── Reset & variables ────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0d0f13;
+  --surface:  #161a22;
+  --border:   #2a2e38;
+  --accent:   #5e81f4;
+  --accent2:  #7ee3a8;
+  --warn:     #f4a35e;
+  --danger:   #f47272;
+  --text:     #cdd6f4;
+  --muted:    #6c7086;
+  --radius:   8px;
+  --mono:     "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo { font-family: var(--mono); font-size: 1.2rem; font-weight: 700; color: var(--accent2); }
+.logo span { color: var(--accent); }
+.version-badge {
+  font-size: 0.72rem;
+  background: var(--border);
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 53px);
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 340px;
+  min-width: 260px;
+  max-width: 420px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px 16px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+  margin-top: 4px;
+}
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 0.78rem; color: var(--muted); }
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 52px; font-family: var(--mono); }
+input[type="number"] { -moz-appearance: textfield; }
+
+.row { display: flex; gap: 8px; }
+.row .field { flex: 1; }
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.82rem;
+}
+.checkbox-field input[type="checkbox"] {
+  width: 15px; height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+/* Run button */
+.run-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background .15s, opacity .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.run-btn:hover { background: #7b9bf6; }
+.run-btn:disabled { opacity: 0.45; cursor: default; }
+.run-btn.stop { background: var(--danger); }
+.run-btn.stop:hover { background: #f68b8b; }
+
+/* Tags input for enable-rule */
+.tags-input { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tag {
+  background: var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tag button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+}
+.tag button:hover { color: var(--danger); }
+
+/* ── Main panel ─────────────────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 16px;
+}
+.tab {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 12px 18px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  position: relative;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 99px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.panel { flex: 1; overflow: auto; display: none; }
+.panel.active { display: flex; flex-direction: column; }
+
+/* ── Log panel ──────────────────────────────────────────────────────────── */
+.log-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.log-toolbar .status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+.log-toolbar .status-dot.running { background: var(--accent2); animation: pulse 1s infinite; }
+.log-toolbar .status-dot.done   { background: var(--accent2); }
+.log-toolbar .status-dot.error  { background: var(--danger); }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+.log-status { font-size: 0.8rem; color: var(--muted); }
+.log-clear {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.log-clear:hover { color: var(--text); border-color: var(--text); }
+
+.log-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg);
+  color: var(--text);
+}
+.log-line.warn  { color: var(--warn); }
+.log-line.error { color: var(--danger); }
+.log-line.info  { color: var(--accent2); }
+
+/* ── Results panel ──────────────────────────────────────────────────────── */
+.results-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.results-toolbar input {
+  max-width: 260px;
+  padding: 5px 10px;
+}
+.results-count { margin-left: auto; font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+
+.table-wrap { flex: 1; overflow: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+thead tr { position: sticky; top: 0; z-index: 2; background: var(--surface); }
+th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+th:hover { color: var(--text); }
+td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+tr:hover td { background: var(--surface); }
+.secret-cell { font-family: var(--mono); color: var(--warn); }
+.rule-chip {
+  background: var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.entropy { color: var(--muted); font-family: var(--mono); }
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.empty-state .icon { font-size: 2.5rem; }
+
+/* ── Export panel ──────────────────────────────────────────────────────── */
+.export-panel {
+  padding: 24px;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.export-panel h2 { font-size: 1rem; color: var(--text); }
+.export-panel p  { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+
+.export-btn {
+  padding: 9px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.export-btn:hover { background: var(--accent); color: #fff; }
+
+/* ── Detail drawer ─────────────────────────────────────────────────────── */
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 100;
+}
+.drawer-overlay.open { display: block; }
+.drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(560px, 95vw);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 24px;
+  overflow-y: auto;
+  z-index: 101;
+  transform: translateX(100%);
+  transition: transform .2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.drawer-close:hover { color: var(--text); }
+.drawer h3 { font-size: 1rem; padding-right: 32px; }
+.kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; font-size: 0.8rem; }
+.kv .k { color: var(--muted); }
+.kv .v { font-family: var(--mono); word-break: break-all; }
+.kv .v.secret { color: var(--warn); }
+.code-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: auto;
+  max-height: 200px;
+  color: var(--text);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">○<span>│</span>gitleaks</div>
+  <span class="version-badge" id="versionBadge">UI v1</span>
+</header>
+
+<div class="layout">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <p class="section-title">Scan Command</p>
+
+    <div class="field">
+      <label for="cmd">Command</label>
+      <select id="cmd">
+        <option value="git">git — scan git repository history</option>
+        <option value="dir">dir — scan directory / files</option>
+        <option value="stdin">stdin — scan piped input</option>
+      </select>
+    </div>
+
+    <!-- Target path (hidden for stdin) -->
+    <div class="field" id="targetField">
+      <label for="target">Target path</label>
+      <input type="text" id="target" placeholder="/ (current directory)" />
+    </div>
+
+    <!-- git-only options -->
+    <div id="gitOptions">
+      <p class="section-title">Git Options</p>
+      <div class="field">
+        <label for="platform">Platform (for links)</label>
+        <select id="platform">
+          <option value="">— none —</option>
+          <option value="github">GitHub</option>
+          <option value="gitlab">GitLab</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="logOpts">Log options (git log flags)</label>
+        <input type="text" id="logOpts" placeholder='e.g. "--all commitA..commitB"' />
+      </div>
+      <label class="checkbox-field">
+        <input type="checkbox" id="preCommit" />
+        Pre-commit mode (scan staged diff)
+      </label>
+      <label class="checkbox-field" style="margin-top:6px">
+        <input type="checkbox" id="staged" />
+        --staged (only staged changes)
+      </label>
+    </div>
+
+    <!-- dir-only options -->
+    <div id="dirOptions" style="display:none">
+      <p class="section-title">Directory Options</p>
+      <label class="checkbox-field">
+        <input type="checkbox" id="followSymlinks" />
+        Follow symlinks
+      </label>
+    </div>
+
+    <hr class="divider" />
+    <p class="section-title">Configuration</p>
+
+    <div class="field">
+      <label for="config">Config file path (--config)</label>
+      <input type="text" id="config" placeholder="(auto-detect .gitleaks.toml)" />
+    </div>
+    <div class="field">
+      <label for="baselinePath">Baseline path (--baseline-path)</label>
+      <input type="text" id="baselinePath" placeholder="path/to/baseline.json" />
+    </div>
+    <div class="field">
+      <label for="ignorePath">Ignore file path (--gitleaks-ignore-path)</label>
+      <input type="text" id="ignorePath" placeholder="." />
+    </div>
+
+    <p class="section-title">Rule Filtering</p>
+    <div class="field">
+      <label>Enable specific rules (--enable-rule) <small style="color:var(--muted)">[press Enter to add]</small></label>
+      <input type="text" id="ruleInput" placeholder="rule-id" />
+      <div class="tags-input" id="ruleTags"></div>
+    </div>
+
+    <hr class="divider" />
+    <p class="section-title">Output &amp; Reporting</p>
+    <div class="row">
+      <div class="field">
+        <label for="reportFormat">Format</label>
+        <select id="reportFormat">
+          <option value="json">json</option>
+          <option value="csv">csv</option>
+          <option value="sarif">sarif</option>
+          <option value="junit">junit</option>
+          <option value="template">template</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="reportPath">Save to path</label>
+        <input type="text" id="reportPath" placeholder="(optional)" />
+      </div>
+    </div>
+    <div class="field" id="templateField" style="display:none">
+      <label for="reportTemplate">Template file path</label>
+      <input type="text" id="reportTemplate" placeholder="path/to/template.tmpl" />
+    </div>
+
+    <hr class="divider" />
+    <p class="section-title">Advanced</p>
+
+    <div class="row">
+      <div class="field">
+        <label for="logLevel">Log level</label>
+        <select id="logLevel">
+          <option value="info">info</option>
+          <option value="debug">debug</option>
+          <option value="trace">trace</option>
+          <option value="warn">warn</option>
+          <option value="error">error</option>
+          <option value="fatal">fatal</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="timeout">Timeout (s)</label>
+        <input type="number" id="timeout" min="0" placeholder="0 = none" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="maxDecode">Max decode depth</label>
+        <input type="number" id="maxDecode" min="0" placeholder="0" />
+      </div>
+      <div class="field">
+        <label for="maxArchive">Max archive depth</label>
+        <input type="number" id="maxArchive" min="0" placeholder="0" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="maxMb">Max file size (MB)</label>
+        <input type="number" id="maxMb" min="0" placeholder="0 = unlimited" />
+      </div>
+      <div class="field">
+        <label for="redact">Redact % (0–100)</label>
+        <input type="number" id="redact" min="0" max="100" placeholder="0 = off" />
+      </div>
+    </div>
+
+    <label class="checkbox-field">
+      <input type="checkbox" id="verbose" />
+      Verbose output (--verbose)
+    </label>
+    <label class="checkbox-field" style="margin-top:6px">
+      <input type="checkbox" id="ignoreAllow" />
+      Ignore gitleaks:allow comments
+    </label>
+
+    <hr class="divider" />
+
+    <button class="run-btn" id="runBtn" onclick="startScan()">
+      ▶ Run Scan
+    </button>
+
+  </aside>
+
+  <!-- ── Main panel ──────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('logs', this)">
+        Logs
+        <span class="tab-badge" id="logBadge" style="display:none">●</span>
+      </button>
+      <button class="tab" onclick="switchTab('results', this)">
+        Findings
+        <span class="tab-badge" id="resultBadge" style="display:none">0</span>
+      </button>
+      <button class="tab" onclick="switchTab('export', this)">
+        Export
+      </button>
+    </div>
+
+    <!-- Logs tab -->
+    <div class="panel active" id="panel-logs">
+      <div class="log-toolbar">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="log-status" id="statusText">Idle – configure and run a scan</span>
+        <button class="log-clear" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="log-output" id="logOutput"></div>
+    </div>
+
+    <!-- Results tab -->
+    <div class="panel" id="panel-results">
+      <div id="emptyResults" class="empty-state">
+        <span class="icon">🔍</span>
+        <span>No scan results yet. Run a scan to see findings here.</span>
+      </div>
+      <div id="resultsContent" style="display:none; flex:1; display:none; flex-direction:column;">
+        <div class="results-toolbar">
+          <input type="text" id="searchInput" placeholder="Filter findings…" oninput="filterFindings()" />
+          <label class="checkbox-field" style="font-size:0.78rem">
+            <input type="checkbox" id="showSecret" checked onchange="renderTable()" />
+            Show secrets
+          </label>
+          <span class="results-count" id="resultsCount"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="sortBy('RuleID')">Rule ID ↕</th>
+                <th onclick="sortBy('File')">File ↕</th>
+                <th onclick="sortBy('StartLine')">Line ↕</th>
+                <th onclick="sortBy('Secret')">Secret</th>
+                <th onclick="sortBy('Entropy')">Entropy ↕</th>
+                <th onclick="sortBy('Commit')">Commit</th>
+                <th onclick="sortBy('Author')">Author</th>
+              </tr>
+            </thead>
+            <tbody id="findingsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export tab -->
+    <div class="panel" id="panel-export">
+      <div class="export-panel">
+        <h2>Export Findings</h2>
+        <p>
+          Download the findings from the last completed scan in the format of
+          your choice. The server stores the raw JSON output; the other formats
+          are converted client-side.
+        </p>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="export-btn" onclick="downloadAs('json')">⬇ JSON</button>
+          <button class="export-btn" onclick="downloadAs('csv')">⬇ CSV</button>
+          <button class="export-btn" onclick="copyToClipboard()">⧉ Copy JSON</button>
+        </div>
+
+        <h2>Generate Baseline</h2>
+        <p>
+          Save current findings as a baseline file. Future scans run with
+          <code style="color:var(--accent)">--baseline-path</code> will ignore
+          findings already in this file.
+        </p>
+        <button class="export-btn" onclick="saveBaseline()">⬇ Save baseline.json</button>
+
+        <hr class="divider" style="margin-top:8px" />
+        <h2>Command Preview</h2>
+        <p>The exact command that will be (or was) executed:</p>
+        <div class="code-block" id="cmdPreview" style="max-height:120px"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Detail Drawer ──────────────────────────────────────────────────── -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  <h3 id="drawerTitle">Finding detail</h3>
+  <div class="kv" id="drawerKV"></div>
+  <p class="section-title" style="margin-top:8px">Match</p>
+  <div class="code-block" id="drawerMatch"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let findings = [];
+let filteredFindings = [];
+let sortKey = null;
+let sortAsc = true;
+let enabledRules = [];
+let eventSource = null;
+let scanRunning = false;
+
+// ── Tab management ─────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'export') updateCmdPreview();
+}
+
+// ── Command type toggle ────────────────────────────────────────────────────
+document.getElementById('cmd').addEventListener('change', updateCommandUI);
+function updateCommandUI() {
+  const cmd = document.getElementById('cmd').value;
+  document.getElementById('gitOptions').style.display   = cmd === 'git'   ? '' : 'none';
+  document.getElementById('dirOptions').style.display   = cmd === 'dir'   ? '' : 'none';
+  document.getElementById('targetField').style.display  = cmd === 'stdin' ? 'none' : '';
+}
+
+document.getElementById('reportFormat').addEventListener('change', () => {
+  const isTemplate = document.getElementById('reportFormat').value === 'template';
+  document.getElementById('templateField').style.display = isTemplate ? '' : 'none';
+});
+
+// ── Enable-rule tags ───────────────────────────────────────────────────────
+document.getElementById('ruleInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if (val && !enabledRules.includes(val)) {
+      enabledRules.push(val);
+      renderTags();
+    }
+    e.target.value = '';
+  }
+});
+
+function renderTags() {
+  const container = document.getElementById('ruleTags');
+  container.innerHTML = enabledRules.map((r, i) =>
+    `<span class="tag">${escHtml(r)}
+      <button data-rule-idx="${i}" class="remove-rule-btn" title="Remove">×</button>
+    </span>`
+  ).join('');
+  container.querySelectorAll('.remove-rule-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      enabledRules.splice(parseInt(btn.getAttribute('data-rule-idx'), 10), 1);
+      renderTags();
+    });
+  });
+}
+
+// ── Build ScanOptions from UI ──────────────────────────────────────────────
+function buildOptions() {
+  const cmd = document.getElementById('cmd').value;
+  return {
+    command:            cmd,
+    target:             v('target'),
+    platform:           v('platform'),
+    staged:             chk('staged'),
+    preCommit:          chk('preCommit'),
+    logOpts:            v('logOpts'),
+    followSymlinks:     chk('followSymlinks'),
+    config:             v('config'),
+    exitCode:           num('exitCode') || 0,
+    baselinePath:       v('baselinePath'),
+    logLevel:           v('logLevel'),
+    verbose:            chk('verbose'),
+    maxTargetMegabytes: num('maxMb') || 0,
+    ignoreGitleaksAllow: chk('ignoreAllow'),
+    redact:             num('redact') || 0,
+    enableRules:        [...enabledRules],
+    gitleaksIgnorePath: v('ignorePath'),
+    maxDecodeDepth:     num('maxDecode') || 0,
+    maxArchiveDepth:    num('maxArchive') || 0,
+    timeout:            num('timeout') || 0,
+    reportFormat:       v('reportFormat'),
+    reportTemplate:     v('reportTemplate'),
+  };
+}
+
+function v(id)   { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function chk(id) { const el = document.getElementById(id); return el ? el.checked : false; }
+function num(id) { const el = document.getElementById(id); return el ? parseInt(el.value) || 0 : 0; }
+
+// ── Run Scan ───────────────────────────────────────────────────────────────
+async function startScan() {
+  if (scanRunning) {
+    // Stop the running scan
+    await fetch('/api/stop', { method: 'POST' });
+    return;
+  }
+
+  clearLog();
+  findings = [];
+  filteredFindings = [];
+  renderTable();
+  updateResultsBadge(0);
+
+  const opts = buildOptions();
+
+  const resp = await fetch('/api/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(opts),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    appendLog('[ERROR] Failed to start scan: ' + text, 'error');
+    return;
+  }
+
+  setScanRunning(true);
+  switchTab('logs', document.querySelector('.tab'));
+
+  // Open SSE stream
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource('/api/scan/stream');
+  eventSource.onmessage = e => {
+    let line = '';
+    try { line = JSON.parse(e.data); } catch { line = e.data; }
+    appendLog(line);
+  };
+  eventSource.addEventListener('done', async () => {
+    eventSource.close();
+    eventSource = null;
+    setScanRunning(false);
+    await loadFindings();
+  });
+  eventSource.onerror = () => {
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    setScanRunning(false);
+  };
+}
+
+function setScanRunning(running) {
+  scanRunning = running;
+  const btn = document.getElementById('runBtn');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  if (running) {
+    btn.textContent = '■ Stop Scan';
+    btn.classList.add('stop');
+    dot.className = 'status-dot running';
+    txt.textContent = 'Scan running…';
+    document.getElementById('logBadge').style.display = '';
+  } else {
+    btn.textContent = '▶ Run Scan';
+    btn.classList.remove('stop');
+    document.getElementById('logBadge').style.display = 'none';
+  }
+}
+
+async function loadFindings() {
+  const resp = await fetch('/api/findings');
+  if (!resp.ok) return;
+  findings = await resp.json();
+  if (!findings) findings = [];
+
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  if (findings.length > 0) {
+    dot.className = 'status-dot error';
+    txt.textContent = `Scan complete — ${findings.length} finding${findings.length !== 1 ? 's' : ''} detected`;
+    appendLog(`\n⚠  ${findings.length} secret${findings.length !== 1 ? 's' : ''} found.`, 'error');
+  } else {
+    dot.className = 'status-dot done';
+    txt.textContent = 'Scan complete — no findings';
+    appendLog('\n✓  No secrets found.', 'info');
+  }
+
+  filteredFindings = findings.slice();
+  renderTable();
+  updateResultsBadge(findings.length);
+}
+
+// ── Log output ─────────────────────────────────────────────────────────────
+function appendLog(line, cls) {
+  const out = document.getElementById('logOutput');
+  const div = document.createElement('div');
+  div.className = 'log-line' + (cls ? ' ' + cls : '');
+  // Auto-detect log level colouring
+  if (!cls) {
+    const l = line.toLowerCase();
+    if (l.includes('"level":"warn"') || l.includes(' wrn ')) div.classList.add('warn');
+    else if (l.includes('"level":"error"') || l.includes(' err ') || l.includes(' ftl ')) div.classList.add('error');
+    else if (l.includes('"level":"info"') || l.includes(' inf ')) div.classList.add('info');
+  }
+  div.textContent = line;
+  out.appendChild(div);
+  out.scrollTop = out.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('logOutput').innerHTML = '';
+}
+
+// ── Findings table ─────────────────────────────────────────────────────────
+function filterFindings() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  if (!q) { filteredFindings = findings.slice(); }
+  else {
+    filteredFindings = findings.filter(f => {
+      const s = JSON.stringify(f).toLowerCase();
+      return s.includes(q);
+    });
+  }
+  renderTable();
+}
+
+function sortBy(key) {
+  if (sortKey === key) sortAsc = !sortAsc;
+  else { sortKey = key; sortAsc = true; }
+  renderTable();
+}
+
+function renderTable() {
+  const empty    = document.getElementById('emptyResults');
+  const content  = document.getElementById('resultsContent');
+  const showSec  = document.getElementById('showSecret').checked;
+
+  let data = filteredFindings.slice();
+  if (sortKey) {
+    data.sort((a, b) => {
+      let av = a[sortKey] ?? '', bv = b[sortKey] ?? '';
+      if (typeof av === 'number') return sortAsc ? av - bv : bv - av;
+      av = String(av).toLowerCase(); bv = String(bv).toLowerCase();
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+  }
+
+  if (findings.length === 0) {
+    empty.style.display = '';
+    content.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  content.style.display = 'flex';
+
+  const tbody = document.getElementById('findingsBody');
+  tbody.innerHTML = data.map((f, i) => `
+    <tr style="cursor:pointer" onclick="openDrawer(${findings.indexOf(f)})">
+      <td><span class="rule-chip">${escHtml(f.RuleID || '')}</span></td>
+      <td title="${escHtml(f.File || '')}">${escHtml(shortPath(f.File || ''))}</td>
+      <td>${escHtml(String(f.StartLine || ''))}</td>
+      <td class="secret-cell">${showSec ? escHtml(f.Secret || '') : '••••••••'}</td>
+      <td class="entropy">${f.Entropy ? f.Entropy.toFixed(2) : ''}</td>
+      <td title="${escHtml(f.Commit || '')}" style="font-family:var(--mono);font-size:.75rem">${escHtml((f.Commit||'').substring(0,8))}</td>
+      <td>${escHtml(f.Author || '')}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('resultsCount').textContent =
+    `${data.length} of ${findings.length} finding${findings.length !== 1 ? 's' : ''}`;
+}
+
+function updateResultsBadge(n) {
+  const badge = document.getElementById('resultBadge');
+  if (n > 0) { badge.textContent = n; badge.style.display = ''; }
+  else badge.style.display = 'none';
+}
+
+// ── Drawer ─────────────────────────────────────────────────────────────────
+function openDrawer(idx) {
+  const f = findings[idx];
+  if (!f) return;
+  document.getElementById('drawerTitle').textContent = f.RuleID || 'Finding';
+
+  const kv = [
+    ['Rule ID',      f.RuleID,      ''],
+    ['Description',  f.Description, ''],
+    ['File',         f.File,        ''],
+    ['Line',         `${f.StartLine}:${f.StartColumn} → ${f.EndLine}:${f.EndColumn}`, ''],
+    ['Secret',       f.Secret,      'secret'],
+    ['Entropy',      f.Entropy ? f.Entropy.toFixed(4) : '', ''],
+    ['Commit',       f.Commit,      ''],
+    ['Author',       f.Author,      ''],
+    ['Email',        f.Email,       ''],
+    ['Date',         f.Date,        ''],
+    ['Fingerprint',  f.Fingerprint, ''],
+    ['Link',         f.Link ? `<a href="${escHtml(f.Link)}" target="_blank" style="color:var(--accent)">${escHtml(f.Link)}</a>` : '', ''],
+  ].filter(([,v]) => v).map(([k, v, cls]) =>
+    `<span class="k">${escHtml(k)}</span><span class="v ${cls}">${v}</span>`
+  ).join('');
+
+  document.getElementById('drawerKV').innerHTML = kv;
+  document.getElementById('drawerMatch').textContent = f.Match || '';
+  document.getElementById('drawerOverlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function downloadAs(fmt) {
+  if (findings.length === 0) { alert('No findings to export.'); return; }
+  let content, mime, ext;
+
+  if (fmt === 'json') {
+    content = JSON.stringify(findings, null, 2);
+    mime = 'application/json'; ext = 'json';
+  } else if (fmt === 'csv') {
+    const cols = ['RuleID','Description','File','StartLine','EndLine','Secret','Entropy','Commit','Author','Email','Date','Fingerprint'];
+    const rows = findings.map(f => cols.map(c => csvCell(f[c] ?? '')).join(','));
+    content = cols.join(',') + '\n' + rows.join('\n');
+    mime = 'text/csv'; ext = 'csv';
+  }
+
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `gitleaks-findings.${ext}` });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function saveBaseline() { downloadAs('json'); }
+
+async function copyToClipboard() {
+  if (findings.length === 0) { alert('No findings to copy.'); return; }
+  await navigator.clipboard.writeText(JSON.stringify(findings, null, 2));
+  alert('Copied to clipboard!');
+}
+
+function csvCell(v) {
+  const s = String(v);
+  if (/[,"\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+// ── Command preview ────────────────────────────────────────────────────────
+function updateCmdPreview() {
+  const opts = buildOptions();
+  const args = buildPreviewArgs(opts);
+  document.getElementById('cmdPreview').textContent = 'gitleaks ' + args.join(' ');
+}
+
+function buildPreviewArgs(opts) {
+  const args = [opts.command || 'git'];
+  if (opts.target && opts.command !== 'stdin') args.push(opts.target);
+  if (opts.platform)     args.push('--platform', opts.platform);
+  if (opts.staged)       args.push('--staged');
+  if (opts.preCommit)    args.push('--pre-commit');
+  if (opts.logOpts)      args.push('--log-opts', opts.logOpts);
+  if (opts.followSymlinks) args.push('--follow-symlinks');
+  if (opts.config)       args.push('--config', opts.config);
+  if (opts.baselinePath) args.push('--baseline-path', opts.baselinePath);
+  if (opts.logLevel && opts.logLevel !== 'info') args.push('--log-level', opts.logLevel);
+  if (opts.verbose)      args.push('--verbose');
+  if (opts.maxTargetMegabytes > 0) args.push('--max-target-megabytes', String(opts.maxTargetMegabytes));
+  if (opts.ignoreGitleaksAllow)    args.push('--ignore-gitleaks-allow');
+  if (opts.redact > 0)   args.push(`--redact=${opts.redact}`);
+  for (const r of (opts.enableRules || [])) args.push('--enable-rule', r);
+  if (opts.gitleaksIgnorePath) args.push('--gitleaks-ignore-path', opts.gitleaksIgnorePath);
+  if (opts.maxDecodeDepth > 0) args.push('--max-decode-depth', String(opts.maxDecodeDepth));
+  if (opts.maxArchiveDepth > 0) args.push('--max-archive-depth', String(opts.maxArchiveDepth));
+  if (opts.timeout > 0)  args.push('--timeout', String(opts.timeout));
+  if (opts.reportFormat) args.push('--report-format', opts.reportFormat);
+  if (opts.reportTemplate) args.push('--report-template', opts.reportTemplate);
+  return args;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function shortPath(p) {
+  const parts = p.replace(/\\/g, '/').split('/');
+  return parts.length > 3 ? '…/' + parts.slice(-2).join('/') : p;
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+updateCommandUI();
+</script>
+</body>
+</html>
